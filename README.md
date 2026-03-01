@@ -1,7 +1,7 @@
 
 # gsb-oauth (Gradle Spring Boot OAuth)
 
-Proxy reactivo para consumir servicios OAuth, construido con Spring Boot 3 y WebFlux.
+Consume el servicio OAuth de keycloak, construido con Spring Boot 3 y WebFlux.
 
 ## Arquitectura Hexagonal
 
