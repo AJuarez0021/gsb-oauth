@@ -81,7 +81,7 @@ docker run -d -p 127.0.0.1:8080:8080 -v keycloakdata:/opt/keycloak/data --name k
 gradle build
 
 # Producción
-java -jar build/libs/proxy-oauth-0.0.1-SNAPSHOT.jar
+java -jar build/libs/gsb-oauth-0.0.1-SNAPSHOT.jar
 ```
 
 ## API
