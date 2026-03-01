@@ -19,6 +19,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
@@ -101,8 +102,13 @@ public class OAuthAdapter implements OAuthPort {
     private Retry buildRetrySpec() {
         return Retry.backoff(oAuthProperties.getAttempts(), Duration.ofMillis(500))
                 .maxBackoff(Duration.ofSeconds(5))
-                .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientRequestException)
-                .doBeforeRetry(signal -> log.debug("Retrying OAuth request, attempt: {}", signal.totalRetries() + 1));
+                .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientRequestException
+                        || (ex instanceof WebClientResponseException responseException
+                        && responseException.getStatusCode().is5xxServerError()))
+                .doBeforeRetry(signal -> log.warn("Retrying OAuth request, attempt: {}/{}, reason: {}",
+                        signal.totalRetries() + 1,
+                        oAuthProperties.getAttempts(),
+                        signal.failure().getMessage()));
     }
 
 
