@@ -1,6 +1,7 @@
 package com.work.proxy.infrastructure.adapter.out.oauth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.work.proxy.application.dto.TokenRequest;
 import com.work.proxy.domain.exception.ServiceException;
 import com.work.proxy.infrastructure.config.OAuthProperties;
 import okhttp3.mockwebserver.MockResponse;
@@ -11,8 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.test.StepVerifier;
 
@@ -59,12 +58,7 @@ class OAuthAdapterTest {
                 .setBody(tokenResponse)
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-        formData.add("client_id", "test-client");
-        formData.add("client_secret", "test-secret");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", "test-client", "test-secret", null, null, null)))
                 .assertNext(response -> {
                     assertTrue(response.getAccessToken().contains("test-access-token"));
                     assertTrue(response.getTokenType().contains("Bearer"));
@@ -89,10 +83,7 @@ class OAuthAdapterTest {
                 .setBody(tokenResponse)
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .assertNext(response -> {
                     assertTrue(response.getAccessToken().contains("token123"));
                     assertTrue(response.getRefreshToken().contains("custom_value"));
@@ -114,10 +105,7 @@ class OAuthAdapterTest {
                 .setBody(errorResponse)
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .expectErrorMatches(throwable ->
                         throwable instanceof ServiceException &&
                         ((ServiceException) throwable).getStatusCode().value() == 401 &&
@@ -132,10 +120,7 @@ class OAuthAdapterTest {
                 .setBody("{\"error\": \"server_error\"}")
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .expectErrorMatches(throwable ->
                         throwable instanceof ServiceException &&
                         ((ServiceException) throwable).getStatusCode().value() == 500 &&
@@ -150,10 +135,7 @@ class OAuthAdapterTest {
                 .setBody("{\"message\": \"bad request\"}")
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .expectErrorMatches(throwable ->
                         throwable instanceof ServiceException &&
                         ((ServiceException) throwable).getStatusCode().value() == 400 &&
@@ -166,10 +148,7 @@ class OAuthAdapterTest {
         mockWebServer.shutdown();
         mockWebServer = new MockWebServer(); // permite que tearDown haga shutdown sin error
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .expectErrorMatches(throwable ->
                         throwable instanceof ServiceException &&
                         ((ServiceException) throwable).getStatusCode().value() == 503 &&
@@ -189,13 +168,8 @@ class OAuthAdapterTest {
                 .setBody(tokenResponse)
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-        formData.add("client_id", "test-client-id");
-        formData.add("client_secret", "test-client-secret");
-        formData.add("scope", "read write");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(
+                        createRequest("client_credentials", "test-client-id", "test-client-secret", null, null, "read write")))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -225,10 +199,7 @@ class OAuthAdapterTest {
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .setBodyDelay(2, TimeUnit.SECONDS));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(adapterWithShortTimeout.requestToken(formData))
+        StepVerifier.create(adapterWithShortTimeout.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .expectErrorMatches(throwable ->
                         throwable instanceof ServiceException &&
                         ((ServiceException) throwable).getStatusCode().value() == 503)
@@ -241,10 +212,7 @@ class OAuthAdapterTest {
                 .setBody("{}")
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .assertNext(response -> {
                     assertNull(response.getAccessToken());
                     assertNull(response.getTokenType());
@@ -259,12 +227,21 @@ class OAuthAdapterTest {
                 .setBody("not valid json {{{")
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "client_credentials");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("client_credentials", null, null, null, null, null)))
                 .expectError()
                 .verify(Duration.ofSeconds(5));
+    }
+
+    private TokenRequest createRequest(String grantType, String clientId, String clientSecret,
+                                       String username, String password, String scope) {
+        return TokenRequest.builder()
+                .grantType(grantType)
+                .clientId(clientId)
+                .clientSecret(clientSecret)
+                .userName(username)
+                .password(password)
+                .scope(scope)
+                .build();
     }
 
     @Test
@@ -273,10 +250,7 @@ class OAuthAdapterTest {
                 .setBody("{}")
                 .setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("grant_type", "password");
-
-        StepVerifier.create(oAuthAdapter.requestToken(formData))
+        StepVerifier.create(oAuthAdapter.requestToken(createRequest("password", null, null, null, null, null)))
                 .expectNextCount(1)
                 .verifyComplete();
 

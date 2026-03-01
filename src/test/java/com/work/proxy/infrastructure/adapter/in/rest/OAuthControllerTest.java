@@ -13,7 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.springframework.util.MultiValueMap;
+import com.work.proxy.application.dto.TokenRequest;
 import org.springframework.web.reactive.function.BodyInserters;
 import reactor.core.publisher.Mono;
 
@@ -112,13 +112,13 @@ class OAuthControllerTest {
                 .exchange()
                 .expectStatus().isOk();
 
-        ArgumentCaptor<MultiValueMap<String, String>> captor = ArgumentCaptor.forClass(MultiValueMap.class);
+        ArgumentCaptor<TokenRequest> captor = ArgumentCaptor.forClass(TokenRequest.class);
         verify(oAuthPort).requestToken(captor.capture());
-        MultiValueMap<String, String> formData = captor.getValue();
-        assertEquals("password",   formData.getFirst("grant_type"));
-        assertEquals("user",       formData.getFirst("username"));
-        assertEquals("pass",       formData.getFirst("password"));
-        assertEquals("my-client",  formData.getFirst("client_id"));
+        TokenRequest captured = captor.getValue();
+        assertEquals("password",  captured.getGrantType());
+        assertEquals("user",      captured.getUserName());
+        assertEquals("pass",      captured.getPassword());
+        assertEquals("my-client", captured.getClientId());
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.work.proxy.infrastructure.adapter.out.oauth;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.work.proxy.application.dto.TokenRequest;
 import com.work.proxy.application.dto.TokenResponse;
 import com.work.proxy.domain.exception.ServiceException;
 import com.work.proxy.domain.port.out.OAuthPort;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ClientResponse;
@@ -34,12 +36,12 @@ public class OAuthAdapter implements OAuthPort {
     private final ObjectMapper objectMapper;
 
     @Override
-    public Mono<TokenResponse> requestToken(MultiValueMap<String, String> formData) {
+    public Mono<TokenResponse> requestToken(TokenRequest request) {
 
         return oauthWebClient.post()
                 .uri(oAuthProperties.getUrl())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body(BodyInserters.fromFormData(formData))
+                .body(BodyInserters.fromFormData(toFormData(request)))
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, this::mapClientResponse)
                 .bodyToMono(TokenResponse.class)
@@ -84,6 +86,17 @@ public class OAuthAdapter implements OAuthPort {
         }
     }
 
+
+    private static MultiValueMap<String, String> toFormData(TokenRequest request) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.set("client_id", request.getClientId());
+        form.set("client_secret", request.getClientSecret());
+        form.set("grant_type", request.getGrantType());
+        form.set("username", request.getUserName());
+        form.set("password", request.getPassword());
+        form.set("scope", request.getScope());
+        return form;
+    }
 
     private Retry buildRetrySpec() {
         return Retry.backoff(oAuthProperties.getAttempts(), Duration.ofMillis(500))
