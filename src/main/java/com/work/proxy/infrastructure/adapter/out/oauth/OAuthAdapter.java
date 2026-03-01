@@ -20,7 +20,6 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
-import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
@@ -48,23 +47,9 @@ public class OAuthAdapter implements OAuthPort {
                 .bodyToMono(TokenResponse.class)
                 .timeout(Duration.ofMillis(oAuthProperties.getTimeout()))
                 .retryWhen(buildRetrySpec())
-                .onErrorMap(this::isConnectionError, ex -> mapWebClientRequestException())
                 .doOnSuccess(response -> log.info("OAuth response received"))
                 .doOnError(ex -> log.error("OAuth request failed — {}: {}", ex.getClass().getSimpleName(), ex.getMessage()));
 
-    }
-
-    private boolean isConnectionError(Throwable ex) {
-        return ex instanceof WebClientRequestException ||
-                ex instanceof TimeoutException ||
-                (Exceptions.isRetryExhausted(ex) &&
-                        (ex.getCause() instanceof WebClientRequestException ||
-                         ex.getCause() instanceof TimeoutException));
-    }
-
-    private ServiceException mapWebClientRequestException() {
-        log.debug("OAuth service unavailable after retries");
-        return new ServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable");
     }
 
     private Mono<? extends Throwable> mapClientResponse(ClientResponse response) {
@@ -102,13 +87,18 @@ public class OAuthAdapter implements OAuthPort {
     private Retry buildRetrySpec() {
         return Retry.backoff(oAuthProperties.getAttempts(), Duration.ofMillis(500))
                 .maxBackoff(Duration.ofSeconds(5))
-                .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientRequestException
+                .filter(ex -> ex instanceof TimeoutException
+                        || ex instanceof WebClientRequestException
                         || (ex instanceof WebClientResponseException responseException
                         && responseException.getStatusCode().is5xxServerError()))
                 .doBeforeRetry(signal -> log.warn("Retrying OAuth request, attempt: {}/{}, reason: {}",
                         signal.totalRetries() + 1,
                         oAuthProperties.getAttempts(),
-                        signal.failure().getMessage()));
+                        signal.failure().getMessage()))
+                .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) -> {
+                    log.error("OAuth request exhausted after {} attempts", retrySignal.totalRetries());
+                    return new ServiceException(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable");
+                });
     }
 
 
