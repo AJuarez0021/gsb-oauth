@@ -1,5 +1,5 @@
 
-# Proxy OAuth
+# gsb-oauth (Gradle Spring Boot OAuth)
 
 Proxy reactivo para consumir servicios OAuth, construido con Spring Boot 3 y WebFlux.
 
